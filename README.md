@@ -1,9 +1,15 @@
 # OMyFish — Your AI Fishing Companion (Frontend)
 
+*When, Where, What you catch.*
+
+Demo: https://huggingface.co/spaces/fenghebonjour/omyfish
+
 Next.js 15 frontend for the OMyFish family. Shared verbatim across the enterprise
-backends — [omyfish-java](https://github.com/fenghebonjour/omyfish-java) and
-[omyfish-dotnet](https://github.com/fenghebonjour/omyfish-dotnet) — via one REST
-contract (`/api/v1/...`).
+backends — [omyfish-java](https://github.com/fenghebonjour/omyfish-java),
+[omyfish-dotnet](https://github.com/fenghebonjour/omyfish-dotnet), and
+[omyfish-python-web](https://github.com/fenghebonjour/omyfish-python-web) — via one
+REST contract (`/api/v1/...`). See [omyfish-frontend-angular](https://github.com/fenghebonjour/omyfish-frontend-angular)
+for the Angular twin of this same app.
 
 ## Pages
 
