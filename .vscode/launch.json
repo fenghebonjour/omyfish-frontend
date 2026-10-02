@@ -1,0 +1,52 @@
+{
+  // Run "Next.js: Full Stack (server breakpoints)" (the compound below).
+  // Gutter breakpoints won't reliably bind in this project (Next.js dev-mode
+  // wraps every module in eval() with a generic, non-unique sourceURL, both
+  // client and server side). Use `debugger;` statements in the source instead
+  // -- they pause execution regardless, then remove them when done.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      // Starts `npm run dev` with NODE_OPTIONS=--inspect, then auto-opens
+      // Edge once the server is ready (for client-side debugging/debugger;).
+      // On its own, this does NOT debug the actual server process -- Next.js
+      // forks a separate "next-server" child process to handle requests, and
+      // that child needs its own debugger attach (see the next config).
+      "name": "Next.js: Full Stack",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "NODE_OPTIONS='--inspect' npm run dev",
+      "serverReadyAction": {
+        "pattern": "- Local:.+(https?://.+)",
+        "uriFormat": "%s",
+        "action": "debugWithEdge",
+        "webRoot": "${workspaceFolder}"
+      }
+    },
+    {
+      // Attaches a separate Node debugger directly to the forked
+      // "next-server" child process's inspector port (9230 = the 9229
+      // default +1, which is how Next.js itself forwards --inspect to that
+      // child). This is what actually lets `debugger;` pause server-side
+      // code (layout/page Server Components, etc). Not meant to be run
+      // alone -- it needs "Next.js: Full Stack" already running first.
+      "name": "Attach to Next.js server",
+      "type": "node",
+      "request": "attach",
+      "port": 9230,
+      "restart": true,
+      "cwd": "${workspaceFolder}",
+      "sourceMaps": true,
+      "skipFiles": ["<node_internals>/**"]
+    }
+  ],
+  "compounds": [
+    {
+      // The one to actually run. Launches both configs above together:
+      // the dev server + Edge (client-side) and the server attach
+      // (server-side), so `debugger;` works on both sides in one go.
+      "name": "Next.js: Full Stack (server breakpoints)",
+      "configurations": ["Next.js: Full Stack", "Attach to Next.js server"]
+    }
+  ]
+}
