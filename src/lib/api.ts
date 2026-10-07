@@ -150,6 +150,13 @@ export interface SubscriptionDto {
   currentPeriodEnd: string | null;
 }
 
+export interface CheckoutResponse {
+  processor: string; // "stripe" | "paypal" | "adyen" — only "stripe" is handled client-side today
+  clientSecret: string;
+  subscriptionId: string;
+  status: string;
+}
+
 export interface AdminStats {
   users: number;
   subscriptions: Record<string, number>;
@@ -325,9 +332,12 @@ export const api = {
       apiFetch<SubscriptionDto>("/api/v1/billing/me", {}, token),
 
     checkout: (plan: "monthly" | "yearly", token: string) =>
-      apiFetch<{ checkoutUrl: string }>("/api/v1/billing/checkout", {
+      apiFetch<CheckoutResponse>("/api/v1/billing/checkout", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": crypto.randomUUID(),
+        },
         body: JSON.stringify({ plan }),
       }, token),
   },

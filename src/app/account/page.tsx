@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, SubscriptionDto } from "@/lib/api";
+import { StripeCheckoutForm } from "@/components/StripeCheckoutForm";
 
 const PLAN_LABELS: Record<string, string> = {
   monthly: "5 CAD / month",
@@ -16,6 +17,8 @@ export default function AccountPage() {
   const [sub, setSub] = useState<SubscriptionDto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [finalizing, setFinalizing] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -30,8 +33,13 @@ export default function AccountPage() {
     setBusy(true);
     setError(null);
     try {
-      const { checkoutUrl } = await api.billing.checkout(plan, token!);
-      window.location.href = checkoutUrl;
+      const { processor, clientSecret } = await api.billing.checkout(plan, token!);
+      if (processor !== "stripe") {
+        setError("This payment method isn't supported yet.");
+        setBusy(false);
+        return;
+      }
+      setClientSecret(clientSecret);
     } catch (e) {
       setError(
         String(e).includes("503")
@@ -39,6 +47,17 @@ export default function AccountPage() {
           : String(e)
       );
       setBusy(false);
+    }
+  }
+
+  async function onCheckoutDone() {
+    setClientSecret(null);
+    setBusy(false);
+    setFinalizing(true);
+    try {
+      setSub(await api.billing.me(token!));
+    } finally {
+      setFinalizing(false);
     }
   }
 
@@ -90,22 +109,30 @@ export default function AccountPage() {
               </p>
             )}
 
-            {sub.status !== "active" && (
-              <div className="grid grid-cols-2 gap-3">
-                {(["monthly", "yearly"] as const).map((plan) => (
-                  <button
-                    key={plan}
-                    onClick={() => subscribe(plan)}
-                    disabled={busy}
-                    className="border border-blue-600 text-blue-700 hover:bg-blue-50 disabled:opacity-50 rounded-lg py-3 text-sm font-medium"
-                  >
-                    {PLAN_LABELS[plan]}
-                    {plan === "yearly" && (
-                      <span className="block text-xs text-gray-400">2 months free</span>
-                    )}
-                  </button>
-                ))}
-              </div>
+            {finalizing && (
+              <p className="text-sm text-gray-500 animate-pulse">Finalizing your subscription…</p>
+            )}
+
+            {sub.status !== "active" && !finalizing && (
+              clientSecret ? (
+                <StripeCheckoutForm clientSecret={clientSecret} onDone={onCheckoutDone} />
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  {(["monthly", "yearly"] as const).map((plan) => (
+                    <button
+                      key={plan}
+                      onClick={() => subscribe(plan)}
+                      disabled={busy}
+                      className="border border-blue-600 text-blue-700 hover:bg-blue-50 disabled:opacity-50 rounded-lg py-3 text-sm font-medium"
+                    >
+                      {PLAN_LABELS[plan]}
+                      {plan === "yearly" && (
+                        <span className="block text-xs text-gray-400">2 months free</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )
             )}
           </div>
         )}

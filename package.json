@@ -10,6 +10,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@stripe/react-stripe-js": "^7.0.0",
+    "@stripe/stripe-js": "^10.0.0",
     "@types/leaflet": "^1.9.21",
     "exifr": "^7.1.3",
     "leaflet": "^1.9.4",

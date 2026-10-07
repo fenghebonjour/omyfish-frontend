@@ -97,3 +97,37 @@ describe("apiFetch 401 handling", () => {
     expect(refreshCalls).toHaveLength(1);
   });
 });
+
+describe("billing.checkout", () => {
+  it("sends a fresh Idempotency-Key header and returns the processor field", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({
+      processor: "stripe",
+      clientSecret: "pi_123_secret_abc",
+      subscriptionId: "sub_456",
+      status: "incomplete",
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await api.billing.checkout("monthly", "token-1");
+
+    expect(result.processor).toBe("stripe");
+    expect(result.clientSecret).toBe("pi_123_secret_abc");
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.headers["Idempotency-Key"]).toEqual(expect.any(String));
+    expect(init.headers["Idempotency-Key"].length).toBeGreaterThan(0);
+  });
+
+  it("uses a different Idempotency-Key on each call", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({
+      processor: "stripe", clientSecret: "secret", subscriptionId: "sub_1", status: "incomplete",
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await api.billing.checkout("monthly", "token-1");
+    await api.billing.checkout("monthly", "token-1");
+
+    const key1 = fetchMock.mock.calls[0][1].headers["Idempotency-Key"];
+    const key2 = fetchMock.mock.calls[1][1].headers["Idempotency-Key"];
+    expect(key1).not.toEqual(key2);
+  });
+});

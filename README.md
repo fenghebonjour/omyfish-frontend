@@ -32,7 +32,8 @@ npm run dev        # -> http://localhost:3000
 
 Set `NEXT_PUBLIC_API_URL` in `.env.local` to point at whichever backend you're running
 (e.g. `http://localhost:8080` for the gateway of a locally running `omyfish-dotnet` or
-`omyfish-java`).
+`omyfish-java`). Set `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` to that backend's Stripe test
+publishable key to exercise checkout locally — it's a public key, safe to ship client-side.
 
 ## Other commands
 
