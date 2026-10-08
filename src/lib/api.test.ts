@@ -99,7 +99,7 @@ describe("apiFetch 401 handling", () => {
 });
 
 describe("billing.checkout", () => {
-  it("sends a fresh Idempotency-Key header and returns the processor field", async () => {
+  it("sends the caller-supplied Idempotency-Key header and returns the processor field", async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({
       processor: "stripe",
       clientSecret: "pi_123_secret_abc",
@@ -108,26 +108,25 @@ describe("billing.checkout", () => {
     }));
     vi.stubGlobal("fetch", fetchMock);
 
-    const result = await api.billing.checkout("monthly", "token-1");
+    const result = await api.billing.checkout("monthly", "token-1", "key-abc");
 
     expect(result.processor).toBe("stripe");
     expect(result.clientSecret).toBe("pi_123_secret_abc");
     const [, init] = fetchMock.mock.calls[0];
-    expect(init.headers["Idempotency-Key"]).toEqual(expect.any(String));
-    expect(init.headers["Idempotency-Key"].length).toBeGreaterThan(0);
+    expect(init.headers["Idempotency-Key"]).toBe("key-abc");
   });
 
-  it("uses a different Idempotency-Key on each call", async () => {
+  it("does not generate its own key — a retry must pass the same one back in", async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({
       processor: "stripe", clientSecret: "secret", subscriptionId: "sub_1", status: "incomplete",
     }));
     vi.stubGlobal("fetch", fetchMock);
 
-    await api.billing.checkout("monthly", "token-1");
-    await api.billing.checkout("monthly", "token-1");
+    await api.billing.checkout("monthly", "token-1", "same-key");
+    await api.billing.checkout("monthly", "token-1", "same-key");
 
     const key1 = fetchMock.mock.calls[0][1].headers["Idempotency-Key"];
     const key2 = fetchMock.mock.calls[1][1].headers["Idempotency-Key"];
-    expect(key1).not.toEqual(key2);
+    expect(key1).toEqual(key2);
   });
 });

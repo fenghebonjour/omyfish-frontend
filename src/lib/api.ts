@@ -331,12 +331,15 @@ export const api = {
     me: (token: string) =>
       apiFetch<SubscriptionDto>("/api/v1/billing/me", {}, token),
 
-    checkout: (plan: "monthly" | "yearly", token: string) =>
+    // idempotencyKey is the caller's responsibility, not generated here — a retry of the same
+    // checkout attempt (e.g. after a timeout) must reuse the same key, or the backend's
+    // idempotency protection (and Stripe's own) never actually engages. See AccountPage.
+    checkout: (plan: "monthly" | "yearly", token: string, idempotencyKey: string) =>
       apiFetch<CheckoutResponse>("/api/v1/billing/checkout", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Idempotency-Key": crypto.randomUUID(),
+          "Idempotency-Key": idempotencyKey,
         },
         body: JSON.stringify({ plan }),
       }, token),

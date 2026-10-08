@@ -19,6 +19,7 @@ export default function AccountPage() {
   const [busy, setBusy] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [finalizing, setFinalizing] = useState(false);
+  const [pendingCheckout, setPendingCheckout] = useState<{ plan: string; key: string } | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -32,8 +33,13 @@ export default function AccountPage() {
   async function subscribe(plan: "monthly" | "yearly") {
     setBusy(true);
     setError(null);
+    // Reuse the same key when the user retries the same plan after a failure, so the backend's
+    // idempotency handling (and Stripe's) actually sees a retry instead of a brand-new attempt.
+    const idempotencyKey =
+      pendingCheckout?.plan === plan ? pendingCheckout.key : crypto.randomUUID();
+    setPendingCheckout({ plan, key: idempotencyKey });
     try {
-      const { processor, clientSecret } = await api.billing.checkout(plan, token!);
+      const { processor, clientSecret } = await api.billing.checkout(plan, token!, idempotencyKey);
       if (processor !== "stripe") {
         setError("This payment method isn't supported yet.");
         setBusy(false);
@@ -52,6 +58,7 @@ export default function AccountPage() {
 
   async function onCheckoutDone() {
     setClientSecret(null);
+    setPendingCheckout(null);
     setBusy(false);
     setFinalizing(true);
     try {
