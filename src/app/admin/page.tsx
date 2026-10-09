@@ -135,6 +135,12 @@ export default function AdminPage() {
                       +7d trial
                     </button>
                     <button
+                      onClick={() => act(() => api.admin.refund(s.userId, token!, crypto.randomUUID()))}
+                      className="text-xs text-amber-600 hover:underline mr-3"
+                    >
+                      Refund
+                    </button>
+                    <button
                       onClick={() => act(() => api.admin.revoke(s.userId, token!))}
                       className="text-xs text-red-500 hover:underline"
                     >

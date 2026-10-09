@@ -130,3 +130,35 @@ describe("billing.checkout", () => {
     expect(key1).toEqual(key2);
   });
 });
+
+describe("billing.portalSession", () => {
+  it("sends the return URL and returns the portal session url", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({
+      url: "https://billing.stripe.com/session/abc",
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await api.billing.portalSession("https://app.example.com/account", "token-1");
+
+    expect(result.url).toBe("https://billing.stripe.com/session/abc");
+    const [, init] = fetchMock.mock.calls[0];
+    expect(JSON.parse(init.body).returnUrl).toBe("https://app.example.com/account");
+  });
+});
+
+describe("admin.refund", () => {
+  it("sends the caller-supplied Idempotency-Key header and returns the refund result", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({
+      refundId: "re_123",
+      status: "succeeded",
+      amountCents: 500,
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await api.admin.refund("user-1", "token-1", "key-xyz");
+
+    expect(result.refundId).toBe("re_123");
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.headers["Idempotency-Key"]).toBe("key-xyz");
+  });
+});

@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 
 export function NavBar() {
-  const { isAuthenticated, email, logout } = useAuth();
+  const { isAuthenticated, email, role, logout } = useAuth();
   const router = useRouter();
 
   const handleLogout = () => {
@@ -39,6 +39,14 @@ export function NavBar() {
               <Link href="/notifications" className="text-sm text-gray-600 hover:text-blue-700 transition-colors">
                 Notifications
               </Link>
+              <Link href="/account" className="text-sm text-gray-600 hover:text-blue-700 transition-colors">
+                Account
+              </Link>
+              {role === "ADMIN" && (
+                <Link href="/admin" className="text-sm text-gray-600 hover:text-blue-700 transition-colors">
+                  Admin
+                </Link>
+              )}
             </>
           )}
         </nav>

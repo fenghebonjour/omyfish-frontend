@@ -20,6 +20,11 @@ export default function AccountPage() {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [finalizing, setFinalizing] = useState(false);
   const [pendingCheckout, setPendingCheckout] = useState<{ plan: string; key: string } | null>(null);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [pwBusy, setPwBusy] = useState(false);
+  const [pwError, setPwError] = useState<string | null>(null);
+  const [pwSuccess, setPwSuccess] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -53,6 +58,33 @@ export default function AccountPage() {
           : String(e)
       );
       setBusy(false);
+    }
+  }
+
+  async function manageBilling() {
+    setError(null);
+    try {
+      const { url } = await api.billing.portalSession(window.location.href, token!);
+      window.location.href = url;
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+
+  async function changePassword(e: React.FormEvent) {
+    e.preventDefault();
+    setPwBusy(true);
+    setPwError(null);
+    setPwSuccess(false);
+    try {
+      await api.auth.changePassword(currentPassword, newPassword, token!);
+      setCurrentPassword("");
+      setNewPassword("");
+      setPwSuccess(true);
+    } catch (e) {
+      setPwError(String(e).includes("400") ? "Current password is incorrect." : String(e));
+    } finally {
+      setPwBusy(false);
     }
   }
 
@@ -92,6 +124,37 @@ export default function AccountPage() {
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm">{error}</div>
         )}
 
+        <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm flex flex-col gap-4">
+          <h2 className="font-semibold text-gray-900">Change password</h2>
+          <form onSubmit={changePassword} className="flex flex-col gap-3">
+            <input
+              type="password"
+              placeholder="Current password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              required
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+            />
+            <input
+              type="password"
+              placeholder="New password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              required
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+            />
+            {pwError && <p className="text-sm text-red-700">{pwError}</p>}
+            {pwSuccess && <p className="text-sm text-green-700">Password updated.</p>}
+            <button
+              type="submit"
+              disabled={pwBusy}
+              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg py-2.5 text-sm font-medium self-start px-6"
+            >
+              {pwBusy ? "Updating…" : "Update password"}
+            </button>
+          </form>
+        </div>
+
         {sub && (
           <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm flex flex-col gap-4">
             <h2 className="font-semibold text-gray-900">Subscription</h2>
@@ -115,12 +178,35 @@ export default function AccountPage() {
                   : "Your subscription is canceled."}
               </p>
             )}
+            {sub.status === "past_due" && (
+              <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">
+                Your last payment failed.{" "}
+                {sub.paymentProcessor === "stripe"
+                  ? "Update your card to keep your subscription active."
+                  : "Contact support to update your payment method."}
+              </p>
+            )}
+
+            {(sub.status === "active" || sub.status === "past_due") && (
+              sub.paymentProcessor === "stripe" ? (
+                <button
+                  onClick={manageBilling}
+                  className="border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg py-2.5 text-sm font-medium self-start px-4"
+                >
+                  Manage billing
+                </button>
+              ) : (
+                <p className="text-sm text-gray-500">
+                  To cancel or change your plan, contact support.
+                </p>
+              )
+            )}
 
             {finalizing && (
               <p className="text-sm text-gray-500 animate-pulse">Finalizing your subscription…</p>
             )}
 
-            {sub.status !== "active" && !finalizing && (
+            {sub.status !== "active" && sub.status !== "past_due" && !finalizing && (
               clientSecret ? (
                 <StripeCheckoutForm clientSecret={clientSecret} onDone={onCheckoutDone} />
               ) : (

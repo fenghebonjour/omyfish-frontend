@@ -8,6 +8,7 @@ interface AuthState {
   token: string | null;
   userId: string | null;
   email: string | null;
+  role: string | null;
 }
 
 interface AuthContextValue extends AuthState {
@@ -20,7 +21,7 @@ interface AuthContextValue extends AuthState {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [auth, setAuth] = useState<AuthState>({ token: null, userId: null, email: null });
+  const [auth, setAuth] = useState<AuthState>({ token: null, userId: null, email: null, role: null });
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
@@ -28,12 +29,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("omyfish_token", resp.token);
     localStorage.setItem("omyfish_userId", resp.userId);
     localStorage.setItem("omyfish_email", resp.email);
+    localStorage.setItem("omyfish_role", resp.role);
   }, []);
 
   const clearStorage = useCallback(() => {
     localStorage.removeItem("omyfish_token");
     localStorage.removeItem("omyfish_userId");
     localStorage.removeItem("omyfish_email");
+    localStorage.removeItem("omyfish_role");
   }, []);
 
   // Lets apiFetch silently refresh an expired access token mid-session (via
@@ -43,11 +46,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuthHandlers({
       onTokenRefreshed: (resp) => {
         persistAuth(resp);
-        setAuth({ token: resp.token, userId: resp.userId, email: resp.email });
+        setAuth({ token: resp.token, userId: resp.userId, email: resp.email, role: resp.role });
       },
       onSessionExpired: () => {
         clearStorage();
-        setAuth({ token: null, userId: null, email: null });
+        setAuth({ token: null, userId: null, email: null, role: null });
         sessionStorage.setItem("omyfish_session_expired", "1");
         router.push("/login");
       },
@@ -58,8 +61,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const token = localStorage.getItem("omyfish_token");
     const userId = localStorage.getItem("omyfish_userId");
     const email = localStorage.getItem("omyfish_email");
+    const role = localStorage.getItem("omyfish_role");
     if (token) {
-      setAuth({ token, userId, email });
+      setAuth({ token, userId, email, role });
       setIsLoading(false);
     } else {
       // No access token in memory/localStorage — try the httpOnly refresh cookie, if any
@@ -68,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       api.auth.refresh()
         .then((resp) => {
           persistAuth(resp);
-          setAuth({ token: resp.token, userId: resp.userId, email: resp.email });
+          setAuth({ token: resp.token, userId: resp.userId, email: resp.email, role: resp.role });
         })
         .catch(() => clearStorage())
         .finally(() => setIsLoading(false));
@@ -78,12 +82,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     const resp: TokenResponse = await api.auth.login(email, password);
     persistAuth(resp);
-    setAuth({ token: resp.token, userId: resp.userId, email: resp.email });
+    setAuth({ token: resp.token, userId: resp.userId, email: resp.email, role: resp.role });
   }, [persistAuth]);
 
   const logout = useCallback(() => {
     clearStorage();
-    setAuth({ token: null, userId: null, email: null });
+    setAuth({ token: null, userId: null, email: null, role: null });
     api.auth.logout().catch(() => {});
   }, [clearStorage]);
 

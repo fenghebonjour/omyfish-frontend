@@ -144,10 +144,11 @@ export interface UserDto {
 }
 
 export interface SubscriptionDto {
-  status: string; // trialing | active | canceled | expired
+  status: string; // trialing | active | canceled | expired | past_due
   plan: string | null;
   trialEnd: string | null;
   currentPeriodEnd: string | null;
+  paymentProcessor: string | null; // "stripe" | "paypal" | "adyen" — only "stripe" has a self-service portal today
 }
 
 export interface CheckoutResponse {
@@ -257,6 +258,13 @@ export const api = {
 
     me: (token: string) =>
       apiFetch<UserDto>("/api/v1/auth/me", {}, token),
+
+    changePassword: (currentPassword: string, newPassword: string, token: string) =>
+      apiFetch<void>("/api/v1/auth/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      }, token),
   },
 
   species: {
@@ -343,6 +351,13 @@ export const api = {
         },
         body: JSON.stringify({ plan }),
       }, token),
+
+    portalSession: (returnUrl: string, token: string) =>
+      apiFetch<{ url: string }>("/api/v1/billing/portal-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ returnUrl }),
+      }, token),
   },
 
   admin: {
@@ -369,6 +384,13 @@ export const api = {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ days }),
+      }, token),
+
+    refund: (userId: string, token: string, idempotencyKey: string) =>
+      apiFetch<{ refundId: string; status: string; amountCents: number | null }>(
+        `/api/v1/admin/subscriptions/${userId}/refund`, {
+        method: "POST",
+        headers: { "Idempotency-Key": idempotencyKey },
       }, token),
   },
 
