@@ -59,8 +59,16 @@ export function ObservationMap({
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
 
+    // React Strict Mode double-invokes this effect (mount -> cleanup -> mount)
+    // without waiting for the async import below, so the cleanup can run before
+    // mapInstanceRef.current is even set. `cancelled` catches that stale resolution
+    // so it doesn't call L.map() a second time on the same container.
+    let cancelled = false;
+
     // Dynamically import Leaflet to avoid SSR issues
     import("leaflet").then((L) => {
+      if (cancelled || mapInstanceRef.current || !mapRef.current) return;
+
       // @ts-expect-error _getIconUrl is internal
       delete L.Icon.Default.prototype._getIconUrl;
       L.Icon.Default.mergeOptions({
@@ -93,6 +101,7 @@ export function ObservationMap({
     });
 
     return () => {
+      cancelled = true;
       if (mapInstanceRef.current) {
         (mapInstanceRef.current as { remove: () => void }).remove();
         mapInstanceRef.current = null;
