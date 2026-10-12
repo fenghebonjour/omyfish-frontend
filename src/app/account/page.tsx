@@ -164,11 +164,18 @@ export default function AccountPage() {
                 Free trial — {trialDaysLeft} day{trialDaysLeft === 1 ? "" : "s"} left
               </p>
             )}
-            {sub.status === "active" && (
+            {sub.status === "active" && !sub.cancelAtPeriodEnd && (
               <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg p-3">
                 Subscribed{sub.plan ? ` — ${PLAN_LABELS[sub.plan] ?? sub.plan}` : ""}
                 {sub.currentPeriodEnd &&
                   ` · renews ${new Date(sub.currentPeriodEnd).toLocaleDateString()}`}
+              </p>
+            )}
+            {sub.status === "active" && sub.cancelAtPeriodEnd && (
+              <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                Subscribed{sub.plan ? ` — ${PLAN_LABELS[sub.plan] ?? sub.plan}` : ""}
+                {sub.currentPeriodEnd &&
+                  ` · cancels ${new Date(sub.currentPeriodEnd).toLocaleDateString()}`}
               </p>
             )}
             {(sub.status === "expired" || sub.status === "canceled") && (

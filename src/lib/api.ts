@@ -149,6 +149,7 @@ export interface SubscriptionDto {
   trialEnd: string | null;
   currentPeriodEnd: string | null;
   paymentProcessor: string | null; // "stripe" | "paypal" | "adyen" — only "stripe" has a self-service portal today
+  cancelAtPeriodEnd: boolean; // true when status is still "active" but scheduled to cancel at currentPeriodEnd
 }
 
 export interface CheckoutResponse {
