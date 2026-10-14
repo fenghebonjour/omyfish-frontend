@@ -146,6 +146,87 @@ describe("billing.portalSession", () => {
   });
 });
 
+describe("shop.cart", () => {
+  it("sends X-Cart-Token instead of Authorization for a guest", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ cartId: "c1", items: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await api.shop.cart.get(undefined, "guest-token-1");
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.headers["X-Cart-Token"]).toBe("guest-token-1");
+    expect(init.headers.Authorization).toBeUndefined();
+  });
+
+  it("sends Authorization and no X-Cart-Token for a logged-in user", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ cartId: "c1", items: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await api.shop.cart.get("user-token");
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.headers.Authorization).toBe("Bearer user-token");
+    expect(init.headers["X-Cart-Token"]).toBeUndefined();
+  });
+
+  it("merge sends the guest token in the body under the caller's account token", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ cartId: "c1", items: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await api.shop.cart.merge("guest-token-1", "user-token");
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain("/api/v1/shop/cart/merge");
+    expect(init.headers.Authorization).toBe("Bearer user-token");
+    expect(JSON.parse(init.body)).toEqual({ guestToken: "guest-token-1" });
+  });
+});
+
+describe("shop.checkout", () => {
+  it("guest checkout sends X-Cart-Token and guestEmail, no Authorization", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({ orderId: "o1", checkoutUrl: "https://stripe.test/session" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await api.shop.checkout(
+      "https://ok", "https://cancel", "key-1", undefined, "guest-token-1", "guest@example.com");
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.headers["X-Cart-Token"]).toBe("guest-token-1");
+    expect(init.headers.Authorization).toBeUndefined();
+    expect(JSON.parse(init.body).guestEmail).toBe("guest@example.com");
+  });
+
+  it("account checkout sends Authorization, no X-Cart-Token", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({ orderId: "o1", checkoutUrl: "https://stripe.test/session" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await api.shop.checkout("https://ok", "https://cancel", "key-1", "user-token");
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.headers.Authorization).toBe("Bearer user-token");
+    expect(init.headers["X-Cart-Token"]).toBeUndefined();
+  });
+});
+
+describe("shop.orders.lookup", () => {
+  it("sends orderId and email as query params with no auth header", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({
+      id: "o1", status: "PAID", totalCents: 999, lines: [],
+      createdAt: "2026-01-01T00:00:00Z", paidAt: null, returnRequestedAt: null,
+      returnedAt: null, returnReason: null,
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await api.shop.orders.lookup("order-1", "guest@example.com");
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain("/api/v1/shop/orders/lookup?orderId=order-1&email=guest%40example.com");
+    expect(init.headers?.Authorization).toBeUndefined();
+  });
+});
+
 describe("admin.refund", () => {
   it("sends the caller-supplied Idempotency-Key header and returns the refund result", async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({

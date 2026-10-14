@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { api, setAuthHandlers, TokenResponse } from "@/lib/api";
+import { peekGuestCartToken, clearGuestCartToken } from "@/lib/guestCart";
 
 interface AuthState {
   token: string | null;
@@ -83,6 +84,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const resp: TokenResponse = await api.auth.login(email, password);
     persistAuth(resp);
     setAuth({ token: resp.token, userId: resp.userId, email: resp.email, role: resp.role });
+
+    // Fold any guest cart built up while logged out into the account cart. Left in place on
+    // failure so a later login can retry the merge.
+    const guestCartToken = peekGuestCartToken();
+    if (guestCartToken) {
+      try {
+        await api.shop.cart.merge(guestCartToken, resp.token);
+        clearGuestCartToken();
+      } catch {
+        // retry on next login
+      }
+    }
   }, [persistAuth]);
 
   const logout = useCallback(() => {

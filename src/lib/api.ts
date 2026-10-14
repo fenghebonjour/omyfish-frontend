@@ -175,6 +175,50 @@ export interface AdminSubscriptionRow {
   currentPeriodEnd: string | null;
 }
 
+export interface ProductDto {
+  id: string;
+  name: string;
+  description: string;
+  priceCents: number;
+  imageUrl: string;
+  stockQuantity: number;
+}
+
+export interface CartItemDto {
+  productId: string;
+  quantity: number;
+}
+
+export interface CartDto {
+  cartId: string;
+  items: CartItemDto[];
+}
+
+export interface OrderLineDto {
+  productId: string;
+  productName: string;
+  unitPriceCents: number;
+  quantity: number;
+}
+
+// Status: PENDING_PAYMENT | PAID | CANCELLED | RETURN_REQUESTED | RETURNED
+export interface OrderDto {
+  id: string;
+  status: string;
+  totalCents: number;
+  lines: OrderLineDto[];
+  createdAt: string;
+  paidAt: string | null;
+  returnRequestedAt: string | null;
+  returnedAt: string | null;
+  returnReason: string | null;
+}
+
+export interface CheckoutSessionResponse {
+  orderId: string;
+  checkoutUrl: string;
+}
+
 // AuthContext registers these so an expired access token can be silently
 // refreshed (via the httpOnly refresh cookie) without every call site having
 // to know about it, and so a truly-dead session can redirect to /login.
@@ -204,6 +248,10 @@ function refreshOnce(): Promise<TokenResponse | null> {
       });
   }
   return refreshPromise;
+}
+
+function cartIdentityHeaders(cartToken?: string): HeadersInit {
+  return cartToken ? { "X-Cart-Token": cartToken } : {};
 }
 
 async function apiFetch<T>(path: string, init?: RequestInit, token?: string, isRetry = false): Promise<T> {
@@ -427,5 +475,90 @@ export const api = {
 
     getGeoJson: () =>
       apiFetch<object>("/api/v1/observations/geojson"),
+  },
+
+  shop: {
+    products: {
+      getAll: () =>
+        apiFetch<ProductDto[]>("/api/v1/shop/products"),
+
+      getById: (id: string) =>
+        apiFetch<ProductDto>(`/api/v1/shop/products/${id}`),
+    },
+
+    // Cart calls accept either an account token or a guest cartToken (never both — see
+    // CartOwnerResolver on the backend), never requiring login.
+    cart: {
+      get: (token?: string, cartToken?: string) =>
+        apiFetch<CartDto>("/api/v1/shop/cart", { headers: cartIdentityHeaders(cartToken) }, token),
+
+      addItem: (productId: string, quantity: number, token?: string, cartToken?: string) =>
+        apiFetch<CartDto>("/api/v1/shop/cart/items", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...cartIdentityHeaders(cartToken) },
+          body: JSON.stringify({ productId, quantity }),
+        }, token),
+
+      // quantity 0 removes the item.
+      updateItem: (productId: string, quantity: number, token?: string, cartToken?: string) =>
+        apiFetch<CartDto>(`/api/v1/shop/cart/items/${productId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", ...cartIdentityHeaders(cartToken) },
+          body: JSON.stringify({ quantity }),
+        }, token),
+
+      // Folds a guest cart into the caller's account cart — called right after login/register
+      // when a guest cart token is still in storage (see AuthContext.login).
+      merge: (guestToken: string, token: string) =>
+        apiFetch<CartDto>("/api/v1/shop/cart/merge", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ guestToken }),
+        }, token),
+    },
+
+    // idempotencyKey follows the same caller-owns-it convention as billing.checkout — a retry
+    // of the same checkout attempt must reuse the same key. guestEmail is required when
+    // checking out as a guest (no token) and ignored otherwise.
+    checkout: (
+      successUrl: string, cancelUrl: string, idempotencyKey: string,
+      token?: string, cartToken?: string, guestEmail?: string
+    ) =>
+      apiFetch<CheckoutSessionResponse>("/api/v1/shop/checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": idempotencyKey,
+          ...cartIdentityHeaders(cartToken),
+        },
+        body: JSON.stringify({ successUrl, cancelUrl, guestEmail }),
+      }, token),
+
+    orders: {
+      getAll: (token: string) =>
+        apiFetch<OrderDto[]>("/api/v1/shop/orders", {}, token),
+
+      getById: (id: string, token: string) =>
+        apiFetch<OrderDto>(`/api/v1/shop/orders/${id}`, {}, token),
+
+      requestReturn: (id: string, reason: string, token: string) =>
+        apiFetch<OrderDto>(`/api/v1/shop/orders/${id}/returns`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reason }),
+        }, token),
+
+      // Admin-only; the backend has no cross-user order listing yet, so the caller must already
+      // know the order id (e.g. from a support request) — see AdminApproveReturnPage.
+      approveReturn: (id: string, token: string) =>
+        apiFetch<OrderDto>(`/api/v1/shop/orders/${id}/returns/approve`, {
+          method: "PATCH",
+        }, token),
+
+      // Public guest order tracking by orderId+email, no account needed.
+      lookup: (orderId: string, email: string) =>
+        apiFetch<OrderDto>(
+          `/api/v1/shop/orders/lookup?orderId=${encodeURIComponent(orderId)}&email=${encodeURIComponent(email)}`),
+    },
   },
 };

@@ -39,6 +39,19 @@ export function NavBar() {
               <Link href="/notifications" className="text-sm text-gray-600 hover:text-blue-700 transition-colors">
                 Notifications
               </Link>
+            </>
+          )}
+          <Link href="/shop" className="text-sm text-gray-600 hover:text-blue-700 transition-colors">
+            Shop
+          </Link>
+          <Link href="/cart" className="text-sm text-gray-600 hover:text-blue-700 transition-colors">
+            Cart
+          </Link>
+          {isAuthenticated ? (
+            <>
+              <Link href="/orders" className="text-sm text-gray-600 hover:text-blue-700 transition-colors">
+                Orders
+              </Link>
               <Link href="/account" className="text-sm text-gray-600 hover:text-blue-700 transition-colors">
                 Account
               </Link>
@@ -48,6 +61,10 @@ export function NavBar() {
                 </Link>
               )}
             </>
+          ) : (
+            <Link href="/orders/track" className="text-sm text-gray-600 hover:text-blue-700 transition-colors">
+              Track Order
+            </Link>
           )}
         </nav>
 
