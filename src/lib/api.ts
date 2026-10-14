@@ -496,6 +496,17 @@ export const api = {
 
       getById: (id: string) =>
         apiFetch<ProductDto>(`/api/v1/shop/products/${id}`),
+
+      // Admin-only; deliberately not under /api/v1/shop/products (which is public for catalog
+      // browsing) — see AdminProductController on the backend.
+      uploadImage: (id: string, image: File, token: string) => {
+        const form = new FormData();
+        form.append("image", image);
+        return apiFetch<ProductDto>(`/api/v1/shop/admin/products/${id}/image`, {
+          method: "POST",
+          body: form,
+        }, token);
+      },
     },
 
     // Cart calls accept either an account token or a guest cartToken (never both — see
@@ -560,8 +571,6 @@ export const api = {
           body: JSON.stringify({ reason }),
         }, token),
 
-      // Admin-only; the backend has no cross-user order listing yet, so the caller must already
-      // know the order id (e.g. from a support request) — see AdminApproveReturnPage.
       approveReturn: (id: string, token: string) =>
         apiFetch<OrderDto>(`/api/v1/shop/orders/${id}/returns/approve`, {
           method: "PATCH",
@@ -571,6 +580,10 @@ export const api = {
       lookup: (orderId: string, email: string) =>
         apiFetch<OrderDto>(
           `/api/v1/shop/orders/lookup?orderId=${encodeURIComponent(orderId)}&email=${encodeURIComponent(email)}`),
+
+      // Admin-only; lists every order regardless of owner, newest first.
+      listAllAdmin: (token: string) =>
+        apiFetch<OrderDto[]>("/api/v1/shop/orders/admin", {}, token),
     },
   },
 };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, ChangeEvent } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
@@ -9,13 +9,15 @@ import { getOrCreateGuestCartToken } from "@/lib/guestCart";
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { isAuthenticated, isLoading: authLoading, token } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, token, role } = useAuth();
   const [product, setProduct] = useState<ProductDto | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   useEffect(() => {
     api.shop.products
@@ -36,6 +38,22 @@ export default function ProductDetailPage() {
       alert("Could not add to cart: " + (e instanceof Error ? e.message : e));
     } finally {
       setAdding(false);
+    }
+  };
+
+  const handleImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingImage(true);
+    setUploadError(null);
+    try {
+      const updated = await api.shop.products.uploadImage(id, file, token!);
+      setProduct(updated);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setUploadingImage(false);
+      e.target.value = "";
     }
   };
 
@@ -90,6 +108,21 @@ export default function ProductDetailPage() {
             </button>
             {added && <span className="text-sm text-green-600">Added to cart ✓</span>}
           </div>
+
+          {role === "ADMIN" && (
+            <div className="mt-6 border-t pt-4">
+              <h2 className="text-sm font-semibold text-gray-700">Admin: Replace photo</h2>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                disabled={uploadingImage}
+                className="mt-2 text-sm"
+              />
+              {uploadingImage && <p className="text-xs text-gray-400 mt-1">Uploading…</p>}
+              {uploadError && <p className="text-xs text-red-600 mt-1">{uploadError}</p>}
+            </div>
+          )}
         </div>
       </div>
     </div>

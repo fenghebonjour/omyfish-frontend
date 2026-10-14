@@ -113,18 +113,42 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {role === "ADMIN" && <AdminApproveReturn token={token!} />}
+      {role === "ADMIN" && <AdminOrdersPanel token={token!} />}
     </div>
   );
 }
 
-// The backend has no endpoint yet to list other customers' orders, so an admin can only act on
-// an order id they already have (e.g. from a support request) — approveReturn works on any
-// order id regardless of who placed it, gated server-side on the X-User-Role header.
-function AdminApproveReturn({ token }: { token: string }) {
+// Lists every order (any owner) so an admin can find — and approve a return on — one without
+// already having its id in hand, plus a manual-id fallback for when they do (e.g. from a
+// support email). approveReturn itself works on any order id, gated server-side on X-User-Role.
+function AdminOrdersPanel({ token }: { token: string }) {
+  const [allOrders, setAllOrders] = useState<OrderDto[]>([]);
+  const [loadingAll, setLoadingAll] = useState(true);
+  const [listError, setListError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
   const [orderId, setOrderId] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    api.shop.orders.listAllAdmin(token)
+      .then(setAllOrders)
+      .catch((e) => setListError(e instanceof Error ? e.message : String(e)))
+      .finally(() => setLoadingAll(false));
+  }, [token]);
+
+  const handleApproveRow = async (id: string) => {
+    setBusyId(id);
+    try {
+      const updated = await api.shop.orders.approveReturn(id, token);
+      setAllOrders((prev) => prev.map((o) => (o.id === id ? updated : o)));
+    } catch (e) {
+      alert("Could not approve return: " + (e instanceof Error ? e.message : e));
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   const handleApprove = async () => {
     if (!orderId) return;
@@ -141,26 +165,61 @@ function AdminApproveReturn({ token }: { token: string }) {
   };
 
   return (
-    <div className="border-t pt-6 mt-2">
-      <h2 className="text-lg font-semibold text-gray-900">Admin: Approve a Return</h2>
-      <p className="text-sm text-gray-500 mt-1">Enter the order id to approve its return and issue a refund.</p>
-      <div className="mt-3 flex items-center gap-2">
-        <input
-          type="text"
-          placeholder="Order id"
-          value={orderId}
-          onChange={(e) => setOrderId(e.target.value)}
-          className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
-        />
-        <button
-          onClick={handleApprove}
-          disabled={busy || !orderId}
-          className="text-sm px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-        >
-          {busy ? "Approving…" : "Approve return"}
-        </button>
+    <div className="border-t pt-6 mt-2 flex flex-col gap-6">
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900">Admin: All Orders</h2>
+        {listError && <p className="mt-1 text-sm text-red-600">{listError}</p>}
+        {loadingAll ? (
+          <p className="mt-2 text-sm text-gray-400">Loading…</p>
+        ) : (
+          <div className="mt-3 flex flex-col gap-2">
+            {allOrders.map((order) => (
+              <div key={order.id} className="border rounded-lg p-3 flex items-center justify-between gap-3 text-sm">
+                <div>
+                  <span className="font-medium text-gray-900">{order.id.slice(0, 8)}…</span>{" "}
+                  <span className="text-gray-500">${(order.totalCents / 100).toFixed(2)}</span>{" "}
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full border ${STATUS_STYLES[order.status] ?? "bg-gray-100 text-gray-500 border-gray-200"}`}
+                  >
+                    {order.status.replace(/_/g, " ")}
+                  </span>
+                </div>
+                {order.status === "RETURN_REQUESTED" && (
+                  <button
+                    onClick={() => handleApproveRow(order.id)}
+                    disabled={busyId === order.id}
+                    className="text-xs px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  >
+                    {busyId === order.id ? "Approving…" : "Approve return"}
+                  </button>
+                )}
+              </div>
+            ))}
+            {allOrders.length === 0 && <p className="text-sm text-gray-400">No orders yet.</p>}
+          </div>
+        )}
       </div>
-      {status && <p className="mt-2 text-sm text-gray-600">{status}</p>}
+
+      <div>
+        <h2 className="text-sm font-semibold text-gray-700">Or approve by order id</h2>
+        <div className="mt-2 flex items-center gap-2">
+          <input
+            type="text"
+            placeholder="Order id"
+            value={orderId}
+            onChange={(e) => setOrderId(e.target.value)}
+            className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+          />
+          <button
+            onClick={handleApprove}
+            disabled={busy || !orderId}
+            className="text-sm px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+          >
+            {busy ? "Approving…" : "Approve return"}
+          </button>
+        </div>
+        {status && <p className="mt-2 text-sm text-gray-600">{status}</p>}
+      </div>
     </div>
   );
 }
