@@ -201,6 +201,16 @@ export interface OrderLineDto {
   quantity: number;
 }
 
+export interface ShippingAddressDto {
+  recipientName: string;
+  line1: string;
+  line2: string | null;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+}
+
 // Status: PENDING_PAYMENT | PAID | CANCELLED | RETURN_REQUESTED | RETURNED
 export interface OrderDto {
   id: string;
@@ -212,6 +222,8 @@ export interface OrderDto {
   returnRequestedAt: string | null;
   returnedAt: string | null;
   returnReason: string | null;
+  // Set once Stripe Checkout collects it, i.e. once status reaches PAID — null before that.
+  shippingAddress: ShippingAddressDto | null;
 }
 
 export interface CheckoutSessionResponse {

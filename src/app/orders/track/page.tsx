@@ -122,6 +122,14 @@ export default function TrackOrderPage() {
               </li>
             ))}
           </ul>
+
+          {order.shippingAddress && (
+            <p className="mt-2 text-xs text-gray-500">
+              Shipping to: {order.shippingAddress.recipientName}, {order.shippingAddress.line1}
+              {order.shippingAddress.line2 ? `, ${order.shippingAddress.line2}` : ""}, {order.shippingAddress.city}{" "}
+              {order.shippingAddress.state} {order.shippingAddress.postalCode}, {order.shippingAddress.country}
+            </p>
+          )}
         </div>
       )}
     </div>
