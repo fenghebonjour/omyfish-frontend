@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
-import { api, ProductDto } from "@/lib/api";
+import { api, ProductDto, resolveImageUrl } from "@/lib/api";
 import { getOrCreateGuestCartToken } from "@/lib/guestCart";
 
 export default function ShopPage() {
@@ -48,7 +48,7 @@ export default function ShopPage() {
           <div key={p.id} className="border rounded-xl p-4 bg-white shadow-sm flex flex-col">
             <Link href={`/shop/${p.id}`}>
               <img
-                src={p.imageUrl}
+                src={resolveImageUrl(p.imageUrl)}
                 alt={p.name}
                 className="w-full h-40 object-cover rounded-lg flex-shrink-0"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}

@@ -4,7 +4,7 @@ import { useEffect, useState, ChangeEvent } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
-import { api, ProductDto } from "@/lib/api";
+import { api, ProductDto, resolveImageUrl } from "@/lib/api";
 import { getOrCreateGuestCartToken } from "@/lib/guestCart";
 
 export default function ProductDetailPage() {
@@ -75,7 +75,7 @@ export default function ProductDetailPage() {
 
       <div className="flex flex-col sm:flex-row gap-6">
         <img
-          src={product.imageUrl}
+          src={resolveImageUrl(product.imageUrl)}
           alt={product.name}
           className="w-full sm:w-72 h-72 object-cover rounded-xl flex-shrink-0"
           onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}

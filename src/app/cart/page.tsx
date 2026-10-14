@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
-import { api, CartDto, ProductDto } from "@/lib/api";
+import { api, CartDto, ProductDto, resolveImageUrl } from "@/lib/api";
 import { getOrCreateGuestCartToken } from "@/lib/guestCart";
 
 export default function CartPage() {
@@ -104,7 +104,7 @@ export default function CartPage() {
               <div key={item.productId} className="border rounded-xl p-4 bg-white shadow-sm flex items-center gap-4">
                 {product?.imageUrl && (
                   <img
-                    src={product.imageUrl}
+                    src={resolveImageUrl(product.imageUrl)}
                     alt={product.name}
                     className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
                     onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
