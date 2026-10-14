@@ -159,10 +159,15 @@ export interface CheckoutResponse {
   status: string;
 }
 
+// Matches BillingService.Stats exactly — a flat record, not nested.
 export interface AdminStats {
-  users: number;
-  subscriptions: Record<string, number>;
-  activePlans: { monthly: number; yearly: number };
+  trialing: number;
+  active: number;
+  canceled: number;
+  expired: number;
+  pastDue: number;
+  activeMonthly: number;
+  activeYearly: number;
   mrrCad: number;
 }
 

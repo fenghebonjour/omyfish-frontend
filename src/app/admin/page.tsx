@@ -79,10 +79,10 @@ export default function AdminPage() {
         {stats && (
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             {[
-              ["Users", stats.users],
-              ["Active subs", stats.subscriptions["active"] ?? 0],
-              ["On trial", stats.subscriptions["trialing"] ?? 0],
-              ["Expired", stats.subscriptions["expired"] ?? 0],
+              ["Active subs", stats.active],
+              ["On trial", stats.trialing],
+              ["Past due", stats.pastDue],
+              ["Expired", stats.expired],
               ["MRR (CAD)", `$${stats.mrrCad.toFixed(2)}`],
             ].map(([label, value]) => (
               <div key={label} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
