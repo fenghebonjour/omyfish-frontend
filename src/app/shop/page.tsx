@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCart } from "@/contexts/CartContext";
 import { api, ProductDto, resolveImageUrl } from "@/lib/api";
 import { getOrCreateGuestCartToken } from "@/lib/guestCart";
 
 export default function ShopPage() {
   const { isAuthenticated, isLoading: authLoading, token } = useAuth();
+  const cart = useCart();
   const [products, setProducts] = useState<ProductDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +27,9 @@ export default function ShopPage() {
     setAddingId(productId);
     try {
       const guestCartToken = isAuthenticated ? undefined : getOrCreateGuestCartToken();
-      await api.shop.cart.addItem(productId, 1, token ?? undefined, guestCartToken);
+      const updated = await api.shop.cart.addItem(productId, 1, token ?? undefined, guestCartToken);
+      cart.applyCart(updated);
+      cart.notify("Added to cart ✓");
     } catch (e) {
       alert("Could not add to cart: " + (e instanceof Error ? e.message : e));
     } finally {

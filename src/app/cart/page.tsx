@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCart } from "@/contexts/CartContext";
 import { api, CartDto, ProductDto, resolveImageUrl } from "@/lib/api";
 import { getOrCreateGuestCartToken } from "@/lib/guestCart";
 
 export default function CartPage() {
   const { isAuthenticated, isLoading: authLoading, token } = useAuth();
+  const cartBadge = useCart();
   const [cart, setCart] = useState<CartDto | null>(null);
   const [products, setProducts] = useState<Record<string, ProductDto>>({});
   const [loading, setLoading] = useState(true);
@@ -21,6 +23,7 @@ export default function CartPage() {
     Promise.all([api.shop.cart.get(token ?? undefined, guestCartToken), api.shop.products.getAll()])
       .then(([cartDto, productList]) => {
         setCart(cartDto);
+        cartBadge.applyCart(cartDto);
         setProducts(Object.fromEntries(productList.map((p) => [p.id, p])));
       })
       .catch((e) => setError(e.message))
@@ -32,6 +35,7 @@ export default function CartPage() {
       const guestCartToken = isAuthenticated ? undefined : getOrCreateGuestCartToken();
       const updated = await api.shop.cart.updateItem(productId, quantity, token ?? undefined, guestCartToken);
       setCart(updated);
+      cartBadge.applyCart(updated);
     } catch (e) {
       alert("Could not update cart: " + (e instanceof Error ? e.message : e));
     }

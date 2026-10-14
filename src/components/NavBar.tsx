@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCart } from "@/contexts/CartContext";
 import { useRouter } from "next/navigation";
 
 export function NavBar() {
   const { isAuthenticated, email, role, logout } = useAuth();
+  const { count: cartCount, toastMessage } = useCart();
   const router = useRouter();
 
   const handleLogout = () => {
@@ -44,8 +46,13 @@ export function NavBar() {
           <Link href="/shop" className="text-sm text-gray-600 hover:text-blue-700 transition-colors">
             Shop
           </Link>
-          <Link href="/cart" className="text-sm text-gray-600 hover:text-blue-700 transition-colors">
+          <Link href="/cart" className="relative text-sm text-gray-600 hover:text-blue-700 transition-colors">
             Cart
+            {cartCount > 0 && (
+              <span className="absolute -top-2 -right-3 bg-blue-600 text-white text-[10px] leading-none rounded-full h-4 min-w-4 px-1 flex items-center justify-center">
+                {cartCount}
+              </span>
+            )}
           </Link>
           {isAuthenticated ? (
             <>
@@ -97,6 +104,12 @@ export function NavBar() {
           )}
         </div>
       </div>
+
+      {toastMessage && (
+        <div className="fixed top-16 right-4 z-50 bg-gray-900 text-white text-sm px-4 py-2 rounded-lg shadow-lg">
+          {toastMessage}
+        </div>
+      )}
     </header>
   );
 }
